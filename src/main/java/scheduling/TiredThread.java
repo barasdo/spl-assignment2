@@ -57,24 +57,63 @@ public class TiredThread extends Thread implements Comparable<TiredThread> {
      */
     public void newTask(Runnable task) {
        // TODO
+        if (!alive.get()) {
+            throw new IllegalStateException("Worker is shutting down");
+        }
+        if (!handoff.offer(task)) {
+            throw new IllegalStateException("Worker is not ready to accept a new task");
+        }
     }
+
 
     /**
      * Request this worker to stop after finishing current task.
      * Inserts a poison pill so the worker wakes up and exits.
      */
     public void shutdown() {
-       // TODO
+        // TODO
+        if (alive.getAndSet(false)) {
+            try {
+                handoff.put(POISON_PILL);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
+
 
     @Override
     public void run() {
        // TODO
+        try {
+            while (true) {
+                Runnable task = handoff.take();
+                if (task == POISON_PILL){
+                    break;
+                }
+
+                long idleEndTime = System.nanoTime();
+                timeIdle.addAndGet(idleEndTime - idleStartTime.get());
+                busy.set(true);
+                long startTime = System.nanoTime();
+                try {
+                    task.run();
+                }
+                finally {
+                    long endTime = System.nanoTime();
+                    timeUsed.addAndGet(endTime - startTime);
+                    busy.set(false);
+                }
+                idleStartTime.set(System.nanoTime());
+            }
+            }catch (InterruptedException e){
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Override
     public int compareTo(TiredThread o) {
         // TODO
-        return 0;
+        return Double.compare(this.getFatigue(), o.getFatigue());
     }
 }

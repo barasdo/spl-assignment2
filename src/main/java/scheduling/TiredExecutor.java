@@ -1,5 +1,6 @@
 package scheduling;
 
+import java.util.Random;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,11 +14,22 @@ public class TiredExecutor {
 
     public TiredExecutor(int numThreads) {
         // TODO
-        workers = null; // placeholder
+        if (numThreads <= 0) {
+            throw new IllegalArgumentException("Number of threads must be positive");
+        }
+        workers = new TiredThread[numThreads];
+        Random rand = new Random();
+        for (int i=0; i < numThreads; i++){
+            double fatigueFactor = rand.nextDouble(0.5,1.5);
+            workers[i] = new TiredThread(i, fatigueFactor);
+            workers[i].start();
+            idleMinHeap.add(workers[i]);
+        }
     }
 
     public void submit(Runnable task) {
         // TODO
+
     }
 
     public void submitAll(Iterable<Runnable> tasks) {
