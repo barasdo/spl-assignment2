@@ -33,9 +33,13 @@ public class TiredExecutor {
         }
 
         TiredThread worker;
+
         try {
+            //block until a worker is available
             worker = idleMinHeap.take();
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
+            //if interrupted while waiting, set interrupt flag and return
             Thread.currentThread().interrupt();
             return;
         }
@@ -43,25 +47,27 @@ public class TiredExecutor {
         inFlight.incrementAndGet();
 
         try {
+            //wrap the task to return the worker to the idle heap after completion
             Runnable wrapped = () -> {
                 try {
+                    //run the actual task
                     task.run();
                 } finally {
-
+                    //return the worker to the idle heap (that's the reason we wrap the task)
                     synchronized (TiredExecutor.this) {
                         idleMinHeap.add(worker);
-
+                    //decrement in-flight task count and notify if zero (for shutdown and submitAll)
                         if (inFlight.decrementAndGet() == 0) {
                             TiredExecutor.this.notifyAll();
                         }
                     }
                 }
             };
-
+            //assign the wrapped task to the worker
             worker.newTask(wrapped);
 
         } catch (IllegalStateException e) {
-
+            //if the worker rejected the task, decrement in-flight count and return the worker to idle heap
             synchronized (this) {
                 inFlight.decrementAndGet();
                 idleMinHeap.add(worker);
@@ -77,15 +83,18 @@ public class TiredExecutor {
             submit(task);
         }
         synchronized (this){
+            //wait until all tasks are done
             while (inFlight.get() > 0){
+                //we wait that all tasks are finished, and then we notify
                 try {
                     this.wait();
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
+                    return;
                 }
             }
         }
-        }
+    }
 
 
 

@@ -81,11 +81,19 @@ public class SharedVector {
 
     public void add(SharedVector other) {
         // TODO: add two vectors
+
         if (other == null) {
             throw new IllegalArgumentException("Can't add other vector is null.");
         }
-        this.writeLock();
-        other.readLock();
+        boolean thisIsFirst = System.identityHashCode(this) < System.identityHashCode(other);
+        if (thisIsFirst) {
+            this.writeLock();
+            other.readLock();
+        }
+        else {
+            other.readLock();
+            this.writeLock();
+        }
         try {
             if (other.vector.length != this.vector.length) {
                 throw new IllegalArgumentException("Vectors must be of the same length to add.");
@@ -97,8 +105,14 @@ public class SharedVector {
                 this.vector[i] += other.vector[i];
             }
         } finally {
-            other.readUnlock();
-            this.writeUnlock();
+            if (thisIsFirst) {
+                other.readUnlock();
+                this.writeUnlock();
+            }
+            else {
+                this.writeUnlock();
+                other.readUnlock();
+            }
         }
     }
 

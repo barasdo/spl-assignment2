@@ -1,199 +1,221 @@
 import memory.*;
-import java.util.concurrent.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class Memory_tests {
+import static org.junit.jupiter.api.Assertions.*;
 
-    private static int passed = 0;
-    private static int failed = 0;
+class Memory_tests {
 
-    public static void main(String[] args) {
-        System.out.println("=== Starting SharedMemory Tests ===\n");
+    private static final double DELTA = 1e-4;
 
-        run("Vector init/get", Memory_tests::testVectorInit);
-        run("Vector transpose", Memory_tests::testVectorTranspose);
-        run("Vector add", Memory_tests::testVectorAdd);
-        run("Vector negate", Memory_tests::testVectorNegate);
-        run("Vector dot", Memory_tests::testVectorDot);
-        run("Vector errors", Memory_tests::testVectorErrors);
+    // ==========================================
+    //              VECTOR TESTS
+    // ==========================================
 
-        run("Matrix row-major read", Memory_tests::testMatrixRowMajor);
-        run("Matrix column-major read", Memory_tests::testMatrixColumnMajor);
+    @Test
+    void testVectorInit() {
+        SharedVector v = new SharedVector(new double[]{1, 2, 3}, VectorOrientation.ROW_MAJOR);
 
-        run("Vector × Matrix", Memory_tests::testVecMatMul);
-
-        run("Concurrency: vector add", Memory_tests::testConcurrentVectorAdd);
-        run("Concurrency: vecMatMul", Memory_tests::testConcurrentVecMatMul);
-
-        System.out.println("\n=== Summary ===");
-        System.out.println("Passed: " + passed);
-        System.out.println("Failed: " + failed);
-
-        if (failed > 0) {
-            System.exit(1);
-        }
+        assertEquals(3, v.length(), "Vector length incorrect");
+        assertEquals(VectorOrientation.ROW_MAJOR, v.getOrientation(), "Orientation incorrect");
+        assertEquals(1.0, v.get(0), DELTA);
+        assertEquals(3.0, v.get(2), DELTA);
     }
 
-    // -------------------------------------------------
+    @Test
+    void testVectorTranspose() {
+        SharedVector v = new SharedVector(new double[]{1, 2}, VectorOrientation.ROW_MAJOR);
 
-    private static void run(String name, Runnable test) {
-        try {
-            test.run();
-            System.out.println("✔ " + name);
-            passed++;
-        } catch (Throwable t) {
-            System.out.println("✘ " + name + " -> " + t.getMessage());
-            failed++;
-        }
-    }
-
-    private static void assertEq(double exp, double act) {
-        if (Math.abs(exp - act) > 1e-6)
-            throw new RuntimeException("expected " + exp + ", got " + act);
-    }
-
-    private static void assertTrue(boolean cond, String msg) {
-        if (!cond) throw new RuntimeException(msg);
-    }
-
-    private static void assertThrows(Runnable r) {
-        try {
-            r.run();
-            throw new RuntimeException("expected exception");
-        } catch (Exception ignored) {}
-    }
-
-    // -------------------------------------------------
-    // SharedVector tests
-    // -------------------------------------------------
-
-    private static void testVectorInit() {
-        SharedVector v = new SharedVector(new double[]{1,2,3}, VectorOrientation.ROW_MAJOR);
-        assertEq(1, v.get(0));
-        assertEq(3, v.get(2));
-        assertTrue(v.length() == 3, "length");
-    }
-
-    private static void testVectorTranspose() {
-        SharedVector v = new SharedVector(new double[]{1}, VectorOrientation.ROW_MAJOR);
         v.transpose();
-        assertTrue(v.getOrientation() == VectorOrientation.COLUMN_MAJOR, "transpose");
+        assertEquals(VectorOrientation.COLUMN_MAJOR, v.getOrientation());
+
+        v.transpose();
+        assertEquals(VectorOrientation.ROW_MAJOR, v.getOrientation());
     }
 
-    private static void testVectorAdd() {
-        SharedVector a = new SharedVector(new double[]{1,2}, VectorOrientation.ROW_MAJOR);
-        SharedVector b = new SharedVector(new double[]{3,4}, VectorOrientation.ROW_MAJOR);
-        a.add(b);
-        assertEq(4, a.get(0));
-        assertEq(6, a.get(1));
+    @Test
+    void testVectorAdd() {
+        SharedVector v1 = new SharedVector(new double[]{10, 20}, VectorOrientation.ROW_MAJOR);
+        SharedVector v2 = new SharedVector(new double[]{1, 2}, VectorOrientation.ROW_MAJOR);
+
+        v1.add(v2);
+
+        assertEquals(11.0, v1.get(0), DELTA);
+        assertEquals(22.0, v1.get(1), DELTA);
+
+        // Ensure source vector is not modified
+        assertEquals(1.0, v2.get(0), DELTA);
+        assertEquals(2.0, v2.get(1), DELTA);
     }
 
-    private static void testVectorNegate() {
-        SharedVector v = new SharedVector(new double[]{1,-2}, VectorOrientation.ROW_MAJOR);
+    @Test
+    void testVectorNegate() {
+        SharedVector v = new SharedVector(new double[]{1, -2}, VectorOrientation.ROW_MAJOR);
         v.negate();
-        assertEq(-1, v.get(0));
-        assertEq(2, v.get(1));
+
+        assertEquals(-1.0, v.get(0), DELTA);
+        assertEquals(2.0, v.get(1), DELTA);
     }
 
-    private static void testVectorDot() {
-        SharedVector r = new SharedVector(new double[]{1,2}, VectorOrientation.ROW_MAJOR);
-        SharedVector c = new SharedVector(new double[]{3,4}, VectorOrientation.COLUMN_MAJOR);
-        assertEq(11, r.dot(c));
+    @Test
+    void testVectorDotProduct() {
+        SharedVector row = new SharedVector(new double[]{1, 2}, VectorOrientation.ROW_MAJOR);
+        SharedVector col = new SharedVector(new double[]{3, 4}, VectorOrientation.COLUMN_MAJOR);
+
+        double result = row.dot(col);
+        assertEquals(11.0, result, DELTA);
     }
 
-    private static void testVectorErrors() {
-        SharedVector a = new SharedVector(new double[]{1}, VectorOrientation.ROW_MAJOR);
-        SharedVector b = new SharedVector(new double[]{1,2}, VectorOrientation.ROW_MAJOR);
-        assertThrows(() -> a.add(b));
+    @Test
+    void testVectorErrors() {
+        SharedVector v1 = new SharedVector(new double[]{1, 2}, VectorOrientation.ROW_MAJOR);
+        SharedVector v2 = new SharedVector(new double[]{1, 2, 3}, VectorOrientation.ROW_MAJOR);
+        SharedVector v3 = new SharedVector(new double[]{1, 2}, VectorOrientation.ROW_MAJOR);
+
+        assertThrows(IllegalArgumentException.class, () -> v1.add(v2),
+                "Expected exception on length mismatch");
+
+        assertThrows(IllegalArgumentException.class, () -> v1.dot(v3),
+                "Expected exception on invalid dot product orientation");
     }
 
-    // -------------------------------------------------
-    // SharedMatrix tests
-    // -------------------------------------------------
+    // ==========================================
+    //              MATRIX TESTS
+    // ==========================================
 
-    private static void testMatrixRowMajor() {
-        double[][] m = {{1,2},{3,4}};
-        SharedMatrix sm = new SharedMatrix(m);
-        double[][] r = sm.readRowMajor();
-        assertEq(1, r[0][0]);
-        assertEq(4, r[1][1]);
+    @Test
+    void testMatrixInitAndRead() {
+        double[][] data = {{1, 2}, {3, 4}};
+        SharedMatrix m = new SharedMatrix(data);
+
+        double[][] read = m.readRowMajor();
+
+        assertEquals(1.0, read[0][0], DELTA);
+        assertEquals(4.0, read[1][1], DELTA);
     }
 
-    private static void testMatrixColumnMajor() {
-        double[][] m = {{1,2},{3,4}};
-        SharedMatrix sm = new SharedMatrix();
-        sm.loadColumnMajor(m);
+    @Test
+    void testMatrixLoadColumnMajor() {
+        double[][] data = {{1, 2}, {3, 4}};
+        SharedMatrix m = new SharedMatrix();
+        m.loadColumnMajor(data);
 
-        double[][] r = sm.readRowMajor();
-        // חייב להיות זהה למטריצה המקורית
-        assertEq(1, r[0][0]);
-        assertEq(2, r[0][1]);
-        assertEq(3, r[1][0]);
-        assertEq(4, r[1][1]);
+        double[][] read = m.readRowMajor();
+
+        assertEquals(1.0, read[0][0], DELTA);
+        assertEquals(2.0, read[0][1], DELTA);
+        assertEquals(3.0, read[1][0], DELTA);
+        assertEquals(4.0, read[1][1], DELTA);
     }
 
-    // -------------------------------------------------
-    // vecMatMul
-    // -------------------------------------------------
+    @Test
+    void testVectorMatrixMultiplication() {
+        SharedVector v = new SharedVector(new double[]{1, 2}, VectorOrientation.ROW_MAJOR);
 
-    private static void testVecMatMul() {
-        SharedVector v = new SharedVector(new double[]{1,2}, VectorOrientation.ROW_MAJOR);
+        double[][] matData = {{3, 4}, {5, 6}};
+        SharedMatrix m = new SharedMatrix();
+        m.loadColumnMajor(matData);
 
-        double[][] m = {{3,5},{4,6}};
-        SharedMatrix sm = new SharedMatrix();
-        sm.loadColumnMajor(m);
+        v.vecMatMul(m);
 
-        v.vecMatMul(sm);
-
-        assertEq(11, v.get(0)); // 1*3 + 2*4
-        assertEq(17, v.get(1)); // 1*5 + 2*6
+        assertEquals(13.0, v.get(0), DELTA);
+        assertEquals(16.0, v.get(1), DELTA);
     }
 
-    // -------------------------------------------------
-    // Concurrency
-    // -------------------------------------------------
+    @Test
+    void testVecMatMulDoesNotModifyMatrix() {
+        double[][] matData = {{1, 1}, {1, 1}};
+        SharedMatrix m = new SharedMatrix();
+        m.loadColumnMajor(matData);
 
-    private static void testConcurrentVectorAdd() {
-        SharedVector base = new SharedVector(new double[]{0}, VectorOrientation.ROW_MAJOR);
-        SharedVector one  = new SharedVector(new double[]{1}, VectorOrientation.ROW_MAJOR);
+        double[][] before = m.readRowMajor();
 
-        int N = 500;
-        ExecutorService ex = Executors.newFixedThreadPool(8);
-        CountDownLatch l = new CountDownLatch(N);
+        SharedVector v = new SharedVector(new double[]{2, 2}, VectorOrientation.ROW_MAJOR);
+        v.vecMatMul(m);
 
-        for (int i = 0; i < N; i++) {
-            ex.execute(() -> {
-                base.add(one);
-                l.countDown();
+        double[][] after = m.readRowMajor();
+
+        assertArrayEquals(before[0], after[0], DELTA);
+        assertArrayEquals(before[1], after[1], DELTA);
+    }
+
+    // ==========================================
+    //          CONCURRENCY TESTS
+    // ==========================================
+
+    @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
+    void testConcurrentVectorAdd() throws InterruptedException {
+        int threadCount = 1000;
+
+        SharedVector target = new SharedVector(new double[]{0}, VectorOrientation.ROW_MAJOR);
+        SharedVector adder = new SharedVector(new double[]{1}, VectorOrientation.ROW_MAJOR);
+
+        ExecutorService executor = Executors.newFixedThreadPool(20);
+        CountDownLatch latch = new CountDownLatch(threadCount);
+        AtomicInteger failures = new AtomicInteger(0);
+
+        for (int i = 0; i < threadCount; i++) {
+            executor.submit(() -> {
+                try {
+                    target.add(adder);
+                } catch (Exception e) {
+                    failures.incrementAndGet();
+                } finally {
+                    latch.countDown();
+                }
             });
         }
 
-        try { l.await(); } catch (InterruptedException ignored) {}
-        ex.shutdown();
+        assertTrue(latch.await(5, TimeUnit.SECONDS), "Threads did not finish");
+        executor.shutdown();
 
-        assertEq(N, base.get(0));
+        assertEquals(0, failures.get(), "Exceptions occurred during concurrent add");
+        assertEquals(1000.0, target.get(0), DELTA,
+                "Incorrect result – possible race condition");
     }
 
-    private static void testConcurrentVecMatMul() {
-        double[][] m = {{1,1},{1,1}};
-        SharedMatrix sm = new SharedMatrix();
-        sm.loadColumnMajor(m);
+    @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
+    void testConcurrentVecMatMul() throws InterruptedException {
+        int threadCount = 20;
 
-        AtomicInteger errors = new AtomicInteger();
-        ExecutorService ex = Executors.newFixedThreadPool(8);
+        double[][] matData = {{1, 1}, {1, 1}};
+        SharedMatrix sharedMatrix = new SharedMatrix();
+        sharedMatrix.loadColumnMajor(matData);
 
-        for (int i = 0; i < 20; i++) {
-            ex.execute(() -> {
-                SharedVector v = new SharedVector(new double[]{2,2}, VectorOrientation.ROW_MAJOR);
-                v.vecMatMul(sm);
-                if (v.get(0) != 4 || v.get(1) != 4)
-                    errors.incrementAndGet();
+        ExecutorService executor = Executors.newFixedThreadPool(10);
+        CountDownLatch latch = new CountDownLatch(threadCount);
+        AtomicInteger failures = new AtomicInteger(0);
+
+        for (int i = 0; i < threadCount; i++) {
+            executor.submit(() -> {
+                try {
+                    SharedVector v = new SharedVector(new double[]{2, 2}, VectorOrientation.ROW_MAJOR);
+                    v.vecMatMul(sharedMatrix);
+
+                    if (Math.abs(v.get(0) - 4.0) > DELTA ||
+                            Math.abs(v.get(1) - 4.0) > DELTA) {
+                        failures.incrementAndGet();
+                    }
+                } catch (Exception e) {
+                    failures.incrementAndGet();
+                } finally {
+                    latch.countDown();
+                }
             });
         }
 
-        ex.shutdown();
-        try { ex.awaitTermination(2, TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
+        assertTrue(latch.await(5, TimeUnit.SECONDS), "Threads did not finish");
+        executor.shutdown();
 
-        assertTrue(errors.get() == 0, "concurrency error");
+        assertEquals(0, failures.get(),
+                "Concurrent vector-matrix multiplication failed");
     }
 }
