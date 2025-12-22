@@ -56,42 +56,45 @@ public class SharedMatrix {
 
     public double[][] readRowMajor() {
         // TODO: return matrix contents as a row-major double[][]
-        if (vectors.length == 0){
+        SharedVector[] vecs = vectors;
+
+        if (vecs.length == 0) {
             return new double[0][0];
         }
-        int m;
-        int n;
-        SharedVector [] vecs = vectors;
+
         acquireAllVectorReadLocks(vecs);
         try {
-            VectorOrientation orientation = vectors[0].getOrientation();
+            VectorOrientation orientation = vecs[0].getOrientation();
+
             if (orientation == VectorOrientation.ROW_MAJOR) {
-                m = vectors.length;
-                n = vectors[0].length();
+                int m = vecs.length;
+                int n = vecs[0].length();
                 double[][] result = new double[m][n];
+
                 for (int i = 0; i < m; i++) {
-                    SharedVector vec = vectors[i];
+                    SharedVector vec = vecs[i];
                     for (int j = 0; j < n; j++) {
                         result[i][j] = vec.get(j);
                     }
                 }
                 return result;
-            } else {
-                n = vectors.length;
-                m = vectors[0].length();
+
+            } else { // COLUMN_MAJOR
+                int n = vecs.length;
+                int m = vecs[0].length();
                 double[][] result = new double[m][n];
+
                 for (int i = 0; i < n; i++) {
-                    SharedVector vec = vectors[i];
+                    SharedVector vec = vecs[i];
                     for (int j = 0; j < m; j++) {
                         result[j][i] = vec.get(j);
                     }
                 }
                 return result;
             }
+        } finally {
+            releaseAllVectorReadLocks(vecs);
         }
-        finally {
-            releaseAllVectorReadLocks(vectors);
-            }
 
     }
 

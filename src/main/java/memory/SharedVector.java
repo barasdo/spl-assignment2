@@ -159,6 +159,9 @@ public class SharedVector {
         if (matrix == null) {
             throw new IllegalArgumentException("Can't do vector-matrix multiplication, matrix is null.");
         }
+         if (matrix.getOrientation() != VectorOrientation.COLUMN_MAJOR) {
+             throw new IllegalArgumentException("Matrix must be column-major for vector-matrix multiplication.");
+         }
         if (matrix.length() == 0 || matrix.get(0).length() == 0) {
             throw new IllegalArgumentException("Matrix is empty.");
         }

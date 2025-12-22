@@ -20,7 +20,19 @@ public class LinearAlgebraEngine {
 
     public ComputationNode run(ComputationNode computationRoot) {
         // TODO: resolve computation tree step by step until final matrix is produced
-        return null;
+        if (computationRoot == null) {
+            throw new IllegalArgumentException("ComputationNode cannot be null");
+        }
+
+        computationRoot.associativeNesting();
+
+        ComputationNode toCompute = computationRoot.findResolvable();
+        while (toCompute != null) {
+            loadAndCompute(toCompute);
+            toCompute.resolve(leftMatrix.readRowMajor());
+            toCompute = computationRoot.findResolvable();
+        }
+        return computationRoot;
     }
 
     public void loadAndCompute(ComputationNode node) {
@@ -29,14 +41,33 @@ public class LinearAlgebraEngine {
         if (node == null) {
             throw new IllegalArgumentException("ComputationNode cannot be null");
         }
+        List <ComputationNode> children = node.getChildren();
         List<Runnable> tasks = new ArrayList<>();
         if (node.getNodeType() == ComputationNodeType.ADD) {
+            if (children.size() != 2){
+                throw new IllegalArgumentException("ADD node must have exactly 2 children");
+            }
+            leftMatrix.loadRowMajor(children.get(0).getMatrix());
+            rightMatrix.loadRowMajor(children.get(1).getMatrix());
             tasks = createAddTasks();
         } else if (node.getNodeType() == ComputationNodeType.MULTIPLY) {
+            if (children.size() != 2){
+                throw new IllegalArgumentException("MULTIPLY node must have exactly 2 children");
+            }
+            leftMatrix.loadRowMajor(children.get(0).getMatrix());
+            rightMatrix.loadColumnMajor(children.get(1).getMatrix());
             tasks = createMultiplyTasks();
         } else if (node.getNodeType() == ComputationNodeType.NEGATE) {
+            if (children.size() != 1){
+                throw new IllegalArgumentException("NEGATE node must have exactly 1 child");
+            }
+            leftMatrix.loadRowMajor(children.get(0).getMatrix());
             tasks = createNegateTasks();
         } else if (node.getNodeType() == ComputationNodeType.TRANSPOSE) {
+            if (children.size() != 1){
+                throw new IllegalArgumentException("TRANSPOSE node must have exactly 1 child");
+            }
+            leftMatrix.loadRowMajor(children.get(0).getMatrix());
             tasks = createTransposeTasks();
         } else {
             throw new IllegalArgumentException("Unsupported operation: " + node.getNodeType());
@@ -46,6 +77,13 @@ public class LinearAlgebraEngine {
 
     public List<Runnable> createAddTasks() {
         // TODO: return tasks that perform row-wise addition
+        if (leftMatrix.length() == 0 || rightMatrix.length() == 0){
+            throw new IllegalArgumentException("Matrices must not be empty for addition");
+        }
+        if (leftMatrix.length() != rightMatrix.length()){
+            throw new IllegalArgumentException("Matrices must have the same number of rows for addition");
+        }
+
         List<Runnable> addTasks = new ArrayList<>();
         for (int i = 0; i < leftMatrix.length(); i++){
             SharedVector leftVector = leftMatrix.get(i);
@@ -60,22 +98,58 @@ public class LinearAlgebraEngine {
 
     public List<Runnable> createMultiplyTasks() {
         // TODO: return tasks that perform row × matrix multiplication
-        return null;
+        if (leftMatrix.length() == 0 || rightMatrix.length() == 0){
+            throw new IllegalArgumentException("Matrices must not be empty for multiplication");
+        }
+
+        List<Runnable> multiplyTasks = new ArrayList<>();
+        for(int i=0; i < leftMatrix.length(); i++){
+            SharedVector leftVector = leftMatrix.get(i);
+            Runnable task = () -> {
+              leftVector.vecMatMul(rightMatrix);
+            };
+            multiplyTasks.add(task);
+        }
+        return multiplyTasks;
     }
 
     public List<Runnable> createNegateTasks() {
         // TODO: return tasks that negate rows
-        return null;
+        List<Runnable> negateTasks = new ArrayList<>();
+        for (int i = 0; i < leftMatrix.length(); i++){
+            SharedVector leftVector = leftMatrix.get(i);
+            Runnable task = () -> {
+              leftVector.negate();
+            };
+            negateTasks.add(task);
+        }
+        return negateTasks;
     }
 
     public List<Runnable> createTransposeTasks() {
         // TODO: return tasks that transpose rows
-        List <Runnable> toDo = new ArrayList<>();
-
+        List <Runnable> transposeTasks = new ArrayList<>();
+        for (int i = 0; i < leftMatrix.length(); i++){
+            SharedVector leftVector = leftMatrix.get(i);
+            Runnable task = () -> {
+              leftVector.transpose();
+            };
+            transposeTasks.add(task);
+        }
+        return transposeTasks;
     }
 
     public String getWorkerReport() {
         // TODO: return summary of worker activity
-        return null;
+        return executor.getWorkerReport();
+    }
+    public void shutdown() throws InterruptedException {
+        try {
+            executor.shutdown();
+        }
+        catch (InterruptedException e) {
+            throw new InterruptedException("Executor shutdown interrupted: " + e.getMessage());
+        }
+
     }
 }
