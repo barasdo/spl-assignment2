@@ -57,6 +57,9 @@ public class TiredThread extends Thread implements Comparable<TiredThread> {
      */
     public void newTask(Runnable task) {
        // TODO
+        if (task == null) {
+            throw new IllegalArgumentException("No task to execute");
+        }
         if (!alive.get()) {
             throw new IllegalStateException("Worker is shutting down");
         }
@@ -98,6 +101,10 @@ public class TiredThread extends Thread implements Comparable<TiredThread> {
                 long startTime = System.nanoTime();
                 try {
                     task.run();
+                }
+                catch (RuntimeException e) {
+                    System.err.println("Worker " + id + " encountered an exception: " + e.getMessage());
+                    e.printStackTrace();
                 }
                 finally {
                     long endTime = System.nanoTime();
