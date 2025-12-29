@@ -118,22 +118,46 @@ public class TiredExecutor {
     }
 
     public synchronized String getWorkerReport() {
-        // TODO: return readable statistics for each worker
         StringBuilder sb = new StringBuilder();
 
         sb.append("============== WORKER REPORT ==============\n");
 
         for (TiredThread w : workers) {
             sb.append("Worker #").append(w.getWorkerId())
-                    .append(" | Busy: ").append(w.isBusy())
                     .append(" | Fatigue: ").append(w.getFatigue())
-                    .append(" | Work Time: ").append(w.getTimeUsed() / 1_000_000.0).append(" ms")
-                    .append(" | Idle Time: ").append(w.getTimeIdle() / 1_000_000.0).append(" ms")
+                    .append(" | Work Time: ")
+                    .append(w.getTimeUsed() / 1_000_000.0).append(" ms")
+                    .append(" | Idle Time: ")
+                    .append(w.getTimeIdle() / 1_000_000.0).append(" ms")
                     .append("\n");
         }
 
+        sb.append("------------------------------------------\n");
+        sb.append("Fairness (Sum of Squared Deviations): ")
+                .append(calculateFairness()).append("\n");
         sb.append("==========================================\n");
+
         return sb.toString();
     }
+
+
+
+    private double calculateFairness() {
+        double sum = 0.0;
+        for (TiredThread w : workers) {
+            sum += w.getFatigue();
+        }
+
+        double avg = sum / workers.length;
+
+        double fairness = 0.0;
+        for (TiredThread w : workers) {
+            double diff = w.getFatigue() - avg;
+            fairness += diff * diff;
+        }
+
+        return fairness;
+    }
+
 }
 

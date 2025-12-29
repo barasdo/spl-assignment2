@@ -102,10 +102,6 @@ public class TiredThread extends Thread implements Comparable<TiredThread> {
                 try {
                     task.run();
                 }
-                catch (RuntimeException e) {
-                    System.err.println("Worker " + id + " encountered an exception: " + e.getMessage());
-                    e.printStackTrace();
-                }
                 finally {
                     long endTime = System.nanoTime();
                     timeUsed.addAndGet(endTime - startTime);
@@ -114,7 +110,7 @@ public class TiredThread extends Thread implements Comparable<TiredThread> {
                 idleStartTime.set(System.nanoTime());
             }
             }catch (InterruptedException e){
-            Thread.currentThread().interrupt();
+                Thread.currentThread().interrupt();
         }
     }
 

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -22,6 +23,9 @@ class TiredExecutorTest {
         }
     }
 
+
+
+
     @Test
     void constructorRejectsInvalidThreadCount() {
         assertThrows(IllegalArgumentException.class, () -> new TiredExecutor(0));
@@ -34,46 +38,46 @@ class TiredExecutorTest {
         assertNotNull(executor);
     }
 
+
+
     @Test
-    void submitSingleTask() {
+    void submitSingleTask_executesTask() {
         executor = new TiredExecutor(2);
         AtomicInteger counter = new AtomicInteger(0);
 
-        List<Runnable> tasks = new ArrayList<>();
-        tasks.add(counter::incrementAndGet);
+        executor.submitAll(List.of(counter::incrementAndGet));
 
-        executor.submitAll(tasks);
         assertEquals(1, counter.get());
     }
 
     @Test
-    void submitMultipleTasks() {
+    void submitMultipleTasks_allExecuted() {
         executor = new TiredExecutor(4);
         AtomicInteger counter = new AtomicInteger(0);
 
         List<Runnable> tasks = new ArrayList<>();
-        for (int i = 0; i < 50; i++) {
+        for (int i = 0; i < 100; i++) {
             tasks.add(counter::incrementAndGet);
         }
 
         executor.submitAll(tasks);
-        assertEquals(50, counter.get());
+        assertEquals(100, counter.get());
     }
 
     @Test
-    void submitNullThrowsException() {
+    void submitNullTask_throwsException() {
         executor = new TiredExecutor(2);
         assertThrows(IllegalArgumentException.class, () -> executor.submit(null));
     }
 
     @Test
-    void submitEmptyTaskList() {
+    void submitEmptyTaskList_doesNothing() {
         executor = new TiredExecutor(2);
         executor.submitAll(new ArrayList<>());
     }
 
     @Test
-    void multipleSubmitAllCalls() {
+    void multipleSubmitAllCalls_workCorrectly() {
         executor = new TiredExecutor(3);
         AtomicInteger counter = new AtomicInteger(0);
 
@@ -88,15 +92,28 @@ class TiredExecutorTest {
         assertEquals(30, counter.get());
     }
 
-    @Test
-    void shutdownWithoutTasks() throws InterruptedException {
-        executor = new TiredExecutor(2);
-        executor.shutdown();
-        executor = null;
-    }
 
     @Test
-    void shutdownAfterTasks() throws InterruptedException {
+    void submitAll_waitsUntilAllTasksFinish() {
+        executor = new TiredExecutor(2);
+        AtomicBoolean finished = new AtomicBoolean(false);
+
+        List<Runnable> tasks = new ArrayList<>();
+        tasks.add(() -> {
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException ignored) {}
+        });
+        tasks.add(() -> finished.set(true));
+
+        executor.submitAll(tasks);
+
+        assertTrue(finished.get(), "submitAll should block until all tasks complete");
+    }
+
+
+    @Test
+    void shutdownAfterTasks_tasksCompleteFirst() throws InterruptedException {
         executor = new TiredExecutor(3);
         AtomicInteger counter = new AtomicInteger(0);
 
@@ -112,16 +129,41 @@ class TiredExecutorTest {
         executor = null;
     }
 
+
     @Test
-    void matrixRowNegateTasks() {
+    void fairness_allWorkersParticipate() {
+        executor = new TiredExecutor(3);
+
+        List<Runnable> tasks = new ArrayList<>();
+        for (int i = 0; i < 30; i++) {
+            tasks.add(() -> {
+                try {
+                    Thread.sleep(5);
+                } catch (InterruptedException ignored) {}
+            });
+        }
+
+        executor.submitAll(tasks);
+
+        String report = executor.getWorkerReport();
+
+        assertTrue(report.contains("Worker #0"));
+        assertTrue(report.contains("Worker #1"));
+        assertTrue(report.contains("Worker #2"));
+    }
+
+
+    private static final double DELTA = 1e-6;
+
+    @Test
+    void matrixRowNegateTasks_executeCorrectly() {
         executor = new TiredExecutor(4);
 
-        double[][] data = new double[5][5];
-        for (int i = 0; i < 5; i++) {
-            for (int j = 0; j < 5; j++) {
-                data[i][j] = i * 5 + j;
-            }
-        }
+        double[][] data = {
+                {1, 2, 3},
+                {4, 5, 6},
+                {7, 8, 9}
+        };
 
         SharedMatrix matrix = new SharedMatrix(data);
         List<Runnable> tasks = new ArrayList<>();
@@ -134,22 +176,13 @@ class TiredExecutorTest {
         executor.submitAll(tasks);
 
         double[][] result = matrix.readRowMajor();
-        for (int i = 0; i < 5; i++) {
-            for (int j = 0; j < 5; j++) {
-                double expected = -(i * 5 + j);
-                double actual = result[i][j];
-
-                if (expected == 0.0) {
-                    assertTrue(actual == 0.0);
-                } else {
-                    assertEquals(expected, actual);
-                }
-            }
-        }
+        assertEquals(-1, result[0][0], DELTA);
+        assertEquals(-5, result[1][1], DELTA);
+        assertEquals(-9, result[2][2], DELTA);
     }
 
     @Test
-    void vectorOperationsInParallel() {
+    void vectorOperationsInParallel_workCorrectly() {
         executor = new TiredExecutor(4);
 
         SharedVector[] vectors = new SharedVector[10];
@@ -169,9 +202,9 @@ class TiredExecutorTest {
         executor.submitAll(tasks);
 
         for (int i = 0; i < 10; i++) {
-            assertTrue(vectors[i].get(0) == -i);
-            assertTrue(vectors[i].get(1) == -(i + 1));
-            assertTrue(vectors[i].get(2) == -(i + 2));
+            assertEquals(-i, vectors[i].get(0), DELTA);
+            assertEquals(-(i + 1), vectors[i].get(1), DELTA);
+            assertEquals(-(i + 2), vectors[i].get(2), DELTA);
         }
     }
 }

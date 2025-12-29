@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class TiredThreadTest {
     @Test
-    //Intialization test and getters
+    //Initialization test and getters
     void testInitializationAndGetters() {
         TiredThread worker = new TiredThread(5, 1.5);
 
