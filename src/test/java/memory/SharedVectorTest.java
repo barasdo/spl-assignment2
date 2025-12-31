@@ -7,9 +7,9 @@ import memory.VectorOrientation;
 
 class SharedVectorTest {
     @Test
-        //Test initialization and getters
+    // Test initialization and getters
     void testInitializationAndGetters() {
-        double[] data = {1.0, 2.0, 3.0};
+        double[] data = { 1.0, 2.0, 3.0 };
         SharedVector vector = new SharedVector(data, VectorOrientation.ROW_MAJOR);
 
         assertEquals(3, vector.length());
@@ -23,9 +23,9 @@ class SharedVectorTest {
     }
 
     @Test
-        //Test transpose method
+    // Test transpose method
     void testTranspose() {
-        double[] data = {1.0, 2.0, 3.0};
+        double[] data = { 1.0, 2.0, 3.0 };
         SharedVector vector = new SharedVector(data, VectorOrientation.ROW_MAJOR);
         vector.transpose();
         assertEquals(VectorOrientation.COLUMN_MAJOR, vector.getOrientation());
@@ -34,11 +34,11 @@ class SharedVectorTest {
     }
 
     @Test
-        //Test add
+    // Test add
     void testAdd() {
-        double[] data1 = {1.0, 2.0, 3.0};
-        double[] data2 = {4.0, 5.0, 6.0};
-        double[] data3 = {7.0, 8.0};
+        double[] data1 = { 1.0, 2.0, 3.0 };
+        double[] data2 = { 4.0, 5.0, 6.0 };
+        double[] data3 = { 7.0, 8.0 };
         SharedVector vector1 = new SharedVector(data1, VectorOrientation.ROW_MAJOR);
         SharedVector vector2 = new SharedVector(data2, VectorOrientation.ROW_MAJOR);
         vector1.add(vector2);
@@ -63,9 +63,9 @@ class SharedVectorTest {
     }
 
     @Test
-        //Test negate method
+    // Test negate method
     void testNegate() {
-        double[] data = {1.0, -2.0, 3.0};
+        double[] data = { 1.0, -2.0, 3.0 };
         SharedVector vector = new SharedVector(data, VectorOrientation.ROW_MAJOR);
         vector.negate();
         assertEquals(-1.0, vector.get(0));
@@ -74,17 +74,17 @@ class SharedVectorTest {
     }
 
     @Test
-        //Test dot product
+    // Test dot product
     void testDotProduct() {
-        double[] rowData = {1.0, 2.0, 3.0};
-        double[] colData = {4.0, 5.0, 6.0};
+        double[] rowData = { 1.0, 2.0, 3.0 };
+        double[] colData = { 4.0, 5.0, 6.0 };
         SharedVector rowVector = new SharedVector(rowData, VectorOrientation.ROW_MAJOR);
         SharedVector colVector = new SharedVector(colData, VectorOrientation.COLUMN_MAJOR);
         double result = rowVector.dot(colVector);
         assertEquals(32.0, result);
 
         // Test dot product with different lengths
-        double[] shortData = {1.0, 2.0};
+        double[] shortData = { 1.0, 2.0 };
         SharedVector shortVector = new SharedVector(shortData, VectorOrientation.COLUMN_MAJOR);
         assertThrows(IllegalArgumentException.class, () -> {
             rowVector.dot(shortVector);
@@ -102,10 +102,10 @@ class SharedVectorTest {
     }
 
     @Test
-    //vecMatMulTest
+    // vecMatMulTest
     void testVecMatMul() {
-        double[] rowData = {1.0, 2.0};
-        double[][] matrixData = {{3.0, 4.0}, {5.0, 6.0}};
+        double[] rowData = { 1.0, 2.0 };
+        double[][] matrixData = { { 3.0, 4.0 }, { 5.0, 6.0 } };
         SharedVector rowVector = new SharedVector(rowData, VectorOrientation.ROW_MAJOR);
         SharedMatrix matrix = new SharedMatrix();
         matrix.loadColumnMajor(matrixData);
@@ -119,7 +119,7 @@ class SharedVectorTest {
             colVector.vecMatMul(matrix);
         });
         // Test vecMatMul with incompatible dimensions
-        double[] incompatibleData = {1.0, 2.0, 3.0};
+        double[] incompatibleData = { 1.0, 2.0, 3.0 };
         SharedVector incompatibleVector = new SharedVector(incompatibleData, VectorOrientation.ROW_MAJOR);
         assertThrows(IllegalArgumentException.class, () -> {
             incompatibleVector.vecMatMul(matrix);
@@ -136,7 +136,7 @@ class SharedVectorTest {
             rowVector.vecMatMul(emptyMatrix);
         });
 
-         //Test vecMatMul with empty vector and empty matrix
+        // Test vecMatMul with empty vector and empty matrix
         double[] emptyData = {};
         SharedVector emptyVector = new SharedVector(emptyData, VectorOrientation.ROW_MAJOR);
         assertThrows(IllegalArgumentException.class, () -> {
