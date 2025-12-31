@@ -17,7 +17,7 @@ public class SharedVector {
 
     public double get(int index) {
         // TODO: return element at index (read-locked)
-        this.readLock();
+        this.readLock();    // Read lock ensures visibility of vector contents during concurrent writes
         try {
             return vector[index];
         } finally {
@@ -27,7 +27,7 @@ public class SharedVector {
 
     public int length() {
         // TODO: return vector length
-        this.readLock();
+        this.readLock();   // Read lock prevents observing an inconsistent vector length during concurrent modification
         try {
             return vector.length;
         } finally {
@@ -37,7 +37,7 @@ public class SharedVector {
 
     public VectorOrientation getOrientation() {
         // TODO: return vector orientation
-        this.readLock();
+        this.readLock();     // Read lock ensures consistent visibility of the vector orientation
         try {
             return orientation;
         } finally {
@@ -47,7 +47,8 @@ public class SharedVector {
 
     public void writeLock() {
         // TODO: acquire write lock
-        lock.writeLock().lock();
+        lock.writeLock().lock();     // Acquires exclusive access for modifying vector state
+
     }
 
     public void writeUnlock() {
@@ -57,7 +58,8 @@ public class SharedVector {
 
     public void readLock() {
         // TODO: acquire read lock
-        lock.readLock().lock();
+        lock.readLock().lock();      // Allows concurrent readers while preventing concurrent writes
+
     }
 
     public void readUnlock() {
@@ -67,7 +69,7 @@ public class SharedVector {
 
     public void transpose() {
         // TODO: transpose vector
-        this.writeLock();
+        this.writeLock();    // Write lock prevents concurrent reads from observing a partially updated orientation
         try {
             if (this.orientation == VectorOrientation.ROW_MAJOR) {
                 this.orientation = VectorOrientation.COLUMN_MAJOR;
@@ -85,15 +87,11 @@ public class SharedVector {
         if (other == null) {
             throw new IllegalArgumentException("Can't add other vector is null.");
         }
-        boolean thisIsFirst = System.identityHashCode(this) < System.identityHashCode(other);
-        if (thisIsFirst) {
-            this.writeLock();
-            other.readLock();
-        }
-        else {
-            other.readLock();
-            this.writeLock();
-        }
+        // A write lock is required since this vector's contents are modified.
+        // No deadlock risk exists here because the linear algebra engine enforces
+        // a fixed computation order, where additions are always applied to the left operand.
+        this.writeLock();
+        other.readLock();
         try {
             if (other.vector.length != this.vector.length) {
                 throw new IllegalArgumentException("Vectors must be of the same length to add.");
@@ -105,20 +103,14 @@ public class SharedVector {
                 this.vector[i] += other.vector[i];
             }
         } finally {
-            if (thisIsFirst) {
-                other.readUnlock();
-                this.writeUnlock();
-            }
-            else {
-                this.writeUnlock();
-                other.readUnlock();
-            }
+            other.readUnlock();
+            this.writeUnlock();
         }
     }
 
     public void negate() {
         // TODO: negate vector
-        this.writeLock();
+        this.writeLock();     // Write lock prevents concurrent reads from observing partially negated values
         try {
             for (int i = 0; i < vector.length; i++) {
                 this.vector[i] = -this.vector[i];
@@ -134,6 +126,8 @@ public class SharedVector {
         if (other == null) {
             throw new IllegalArgumentException("Can't compute dot product, other vector is null.");
         }
+        // Read locks on both vectors ensure consistent reads
+        // while allowing concurrent read-only operations
         this.readLock();
         other.readLock();
         try {
@@ -153,7 +147,8 @@ public class SharedVector {
             readUnlock();
         }
     }
-
+    // Write lock is required because the operation replaces the vector contents
+    // and must be atomic with respect to concurrent reads
     public void vecMatMul(SharedMatrix matrix) {
         // TODO: compute row-vector × matrix
         if (matrix == null) {

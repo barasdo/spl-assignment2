@@ -10,7 +10,7 @@ public class Main {
         InputParser inputParser = new InputParser();
 
         try {
-            ComputationNode root = inputParser.parse("example.json");
+            ComputationNode root = inputParser.parse("test_jsons/test_force_all_threads.json");
             ComputationNode result = LAE.run(root);
             OutputWriter.write(result.getMatrix(), "My_out.json");
 

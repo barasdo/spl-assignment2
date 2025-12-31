@@ -90,12 +90,11 @@ public class TiredThread extends Thread implements Comparable<TiredThread> {
     public void run() {
        // TODO
         try {
-            while (true) {
+            while (alive.get()) {
                 Runnable task = handoff.take();
                 if (task == POISON_PILL){
                     break;
                 }
-
                 long idleEndTime = System.nanoTime();
                 timeIdle.addAndGet(idleEndTime - idleStartTime.get());
                 busy.set(true);
@@ -110,8 +109,8 @@ public class TiredThread extends Thread implements Comparable<TiredThread> {
                 }
                 idleStartTime.set(System.nanoTime());
             }
-            }catch (InterruptedException e){
-                return;
+        }catch (InterruptedException e){
+            return;
         }
     }
 

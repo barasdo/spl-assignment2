@@ -19,11 +19,10 @@ public class LinearAlgebraEngine {
     }
 
     public ComputationNode run(ComputationNode computationRoot) {
-        if (computationRoot == null) {
-            throw new IllegalArgumentException("ComputationNode cannot be null");
-        }
-
         try {
+            if (computationRoot == null) {
+                throw new IllegalArgumentException("ComputationNode cannot be null");
+            }
             computationRoot.associativeNesting();
 
             ComputationNode toCompute = computationRoot.findResolvable();
