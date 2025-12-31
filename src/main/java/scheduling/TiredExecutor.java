@@ -39,8 +39,8 @@ public class TiredExecutor {
             worker = idleMinHeap.take();
         }
         catch (InterruptedException e) {
-            //if interrupted while waiting, set interrupt flag and return
-            Thread.currentThread().interrupt();
+            // interruption is treated as a signal to stop the worker thread;
+            // worker termination is coordinated by the executor via its shutdown mechanism
             return;
         }
 
@@ -89,7 +89,7 @@ public class TiredExecutor {
                 try {
                     this.wait();
                 } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+                    // not used in this system
                     return;
                 }
             }
@@ -106,8 +106,7 @@ public class TiredExecutor {
                 try {
                     this.wait();
                 } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw e;
+                    // ignore – shutdown must complete
                 }
             }
         }

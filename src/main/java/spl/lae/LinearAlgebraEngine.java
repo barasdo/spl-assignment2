@@ -37,8 +37,7 @@ public class LinearAlgebraEngine {
             try {
                 executor.shutdown();
             } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException("Executor shutdown interrupted", e);
+                // interruption during shutdown is ignored
             }
         }
     }

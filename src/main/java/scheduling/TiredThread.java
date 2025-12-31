@@ -79,7 +79,8 @@ public class TiredThread extends Thread implements Comparable<TiredThread> {
             try {
                 handoff.put(POISON_PILL);
             } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+                // interruption is not part of the shutdown protocol;
+                // termination is handled via POISON_PILL
             }
         }
     }
@@ -110,7 +111,7 @@ public class TiredThread extends Thread implements Comparable<TiredThread> {
                 idleStartTime.set(System.nanoTime());
             }
             }catch (InterruptedException e){
-                Thread.currentThread().interrupt();
+                return;
         }
     }
 
