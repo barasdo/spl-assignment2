@@ -1,0 +1,12 @@
+-------------------------------------------------------------------------------
+Test set: scheduling.TiredThreadTest
+-------------------------------------------------------------------------------
+Tests run: 6, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 0.107 s <<< FAILURE! -- in scheduling.TiredThreadTest
+scheduling.TiredThreadTest.testWorkerExecutesMultipleTasksSequentially -- Time elapsed: 0.011 s <<< ERROR!
+java.lang.IllegalStateException: Worker is not ready to accept a new task
+	at scheduling.TiredThread.newTask(TiredThread.java:69)
+	at scheduling.TiredThreadTest.testWorkerExecutesMultipleTasksSequentially(TiredThreadTest.java:92)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+
