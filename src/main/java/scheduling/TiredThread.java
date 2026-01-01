@@ -7,7 +7,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class TiredThread extends Thread implements Comparable<TiredThread> {
 
-    private static final Runnable POISON_PILL = () -> {}; // Special task to signal shutdown
+    private static final Runnable POISON_PILL = () -> {
+    }; // Special task to signal shutdown
 
     private final int id; // Worker index assigned by the executor
     private final double fatigueFactor; // Multiplier for fatigue calculation
@@ -17,7 +18,8 @@ public class TiredThread extends Thread implements Comparable<TiredThread> {
     // Single-slot handoff queue; executor will put tasks here
     private final BlockingQueue<Runnable> handoff = new ArrayBlockingQueue<>(1);
 
-    private final AtomicBoolean busy = new AtomicBoolean(false); // Indicates if the worker is currently executing a task
+    private final AtomicBoolean busy = new AtomicBoolean(false); // Indicates if the worker is currently executing a
+                                                                 // task
 
     private final AtomicLong timeUsed = new AtomicLong(0); // Total time spent executing tasks
     private final AtomicLong timeIdle = new AtomicLong(0); // Total time spent idle
@@ -56,7 +58,7 @@ public class TiredThread extends Thread implements Comparable<TiredThread> {
      * it throws IllegalStateException.
      */
     public void newTask(Runnable task) {
-       // TODO
+        // TODO
         if (task == null) {
             throw new IllegalArgumentException("No task to execute");
         }
@@ -67,7 +69,6 @@ public class TiredThread extends Thread implements Comparable<TiredThread> {
             throw new IllegalStateException("Worker is not ready to accept a new task");
         }
     }
-
 
     /**
      * Request this worker to stop after finishing current task.
@@ -85,14 +86,13 @@ public class TiredThread extends Thread implements Comparable<TiredThread> {
         }
     }
 
-
     @Override
     public void run() {
-       // TODO
+        // TODO
         try {
             while (alive.get()) {
                 Runnable task = handoff.take();
-                if (task == POISON_PILL){
+                if (task == POISON_PILL) {
                     break;
                 }
                 long idleEndTime = System.nanoTime();
@@ -101,15 +101,14 @@ public class TiredThread extends Thread implements Comparable<TiredThread> {
                 long startTime = System.nanoTime();
                 try {
                     task.run();
-                }
-                finally {
+                } finally {
                     long endTime = System.nanoTime();
                     timeUsed.addAndGet(endTime - startTime);
                     busy.set(false);
                 }
                 idleStartTime.set(System.nanoTime());
             }
-        }catch (InterruptedException e){
+        } catch (InterruptedException e) {
             return;
         }
     }

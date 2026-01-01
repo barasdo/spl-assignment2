@@ -41,37 +41,36 @@ public class LinearAlgebraEngine {
         }
     }
 
-
     public void loadAndCompute(ComputationNode node) {
         // TODO: load operand matrices
         // TODO: create compute tasks & submit tasks to executor
         if (node == null) {
             throw new IllegalArgumentException("ComputationNode cannot be null");
         }
-        List <ComputationNode> children = node.getChildren();
+        List<ComputationNode> children = node.getChildren();
         List<Runnable> tasks = new ArrayList<>();
         if (node.getNodeType() == ComputationNodeType.ADD) {
-            if (children.size() != 2){
+            if (children.size() != 2) {
                 throw new IllegalArgumentException("ADD node must have exactly 2 children");
             }
             leftMatrix.loadRowMajor(children.get(0).getMatrix());
             rightMatrix.loadRowMajor(children.get(1).getMatrix());
             tasks = createAddTasks();
         } else if (node.getNodeType() == ComputationNodeType.MULTIPLY) {
-            if (children.size() != 2){
+            if (children.size() != 2) {
                 throw new IllegalArgumentException("MULTIPLY node must have exactly 2 children");
             }
             leftMatrix.loadRowMajor(children.get(0).getMatrix());
             rightMatrix.loadColumnMajor(children.get(1).getMatrix());
             tasks = createMultiplyTasks();
         } else if (node.getNodeType() == ComputationNodeType.NEGATE) {
-            if (children.size() != 1){
+            if (children.size() != 1) {
                 throw new IllegalArgumentException("NEGATE node must have exactly 1 child");
             }
             leftMatrix.loadRowMajor(children.get(0).getMatrix());
             tasks = createNegateTasks();
         } else if (node.getNodeType() == ComputationNodeType.TRANSPOSE) {
-            if (children.size() != 1){
+            if (children.size() != 1) {
                 throw new IllegalArgumentException("TRANSPOSE node must have exactly 1 child");
             }
             leftMatrix.loadRowMajor(children.get(0).getMatrix());
@@ -84,15 +83,15 @@ public class LinearAlgebraEngine {
 
     public List<Runnable> createAddTasks() {
         // TODO: return tasks that perform row-wise addition
-        if (leftMatrix.length() == 0 || rightMatrix.length() == 0){
+        if (leftMatrix.length() == 0 || rightMatrix.length() == 0) {
             throw new IllegalArgumentException("Matrices must not be empty for addition");
         }
-        if (leftMatrix.length() != rightMatrix.length()){
+        if (leftMatrix.length() != rightMatrix.length()) {
             throw new IllegalArgumentException("Matrices must have the same number of rows for addition");
         }
 
         List<Runnable> addTasks = new ArrayList<>();
-        for (int i = 0; i < leftMatrix.length(); i++){
+        for (int i = 0; i < leftMatrix.length(); i++) {
             SharedVector leftVector = leftMatrix.get(i);
             SharedVector rightVector = rightMatrix.get(i);
             Runnable task = () -> {
@@ -105,15 +104,15 @@ public class LinearAlgebraEngine {
 
     public List<Runnable> createMultiplyTasks() {
         // TODO: return tasks that perform row × matrix multiplication
-        if (leftMatrix.length() == 0 || rightMatrix.length() == 0){
+        if (leftMatrix.length() == 0 || rightMatrix.length() == 0) {
             throw new IllegalArgumentException("Matrices must not be empty for multiplication");
         }
 
         List<Runnable> multiplyTasks = new ArrayList<>();
-        for(int i=0; i < leftMatrix.length(); i++){
+        for (int i = 0; i < leftMatrix.length(); i++) {
             SharedVector leftVector = leftMatrix.get(i);
             Runnable task = () -> {
-              leftVector.vecMatMul(rightMatrix);
+                leftVector.vecMatMul(rightMatrix);
             };
             multiplyTasks.add(task);
         }
@@ -123,10 +122,10 @@ public class LinearAlgebraEngine {
     public List<Runnable> createNegateTasks() {
         // TODO: return tasks that negate rows
         List<Runnable> negateTasks = new ArrayList<>();
-        for (int i = 0; i < leftMatrix.length(); i++){
+        for (int i = 0; i < leftMatrix.length(); i++) {
             SharedVector leftVector = leftMatrix.get(i);
             Runnable task = () -> {
-              leftVector.negate();
+                leftVector.negate();
             };
             negateTasks.add(task);
         }
@@ -135,11 +134,11 @@ public class LinearAlgebraEngine {
 
     public List<Runnable> createTransposeTasks() {
         // TODO: return tasks that transpose rows
-        List <Runnable> transposeTasks = new ArrayList<>();
-        for (int i = 0; i < leftMatrix.length(); i++){
+        List<Runnable> transposeTasks = new ArrayList<>();
+        for (int i = 0; i < leftMatrix.length(); i++) {
             SharedVector leftVector = leftMatrix.get(i);
             Runnable task = () -> {
-              leftVector.transpose();
+                leftVector.transpose();
             };
             transposeTasks.add(task);
         }
